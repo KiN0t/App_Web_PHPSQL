@@ -1,182 +1,118 @@
 <?php
-// tickets.php - Gestion des tickets avec formulaires fonctionnels
+// tickets.php
 session_start();
 
-// Initialiser les projets si non présents (pour compatibilité avec projects.php)
-if (!isset($_SESSION['projects'])) {
-    $_SESSION['projects'] = [
-        [
-            'id' => '1',
-            'name' => 'Projet Alpha',
-            'description' => 'Développement d\'une nouvelle plateforme de gestion de tickets avec interface moderne et fonctionnalités avancées.',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '2',
-            'name' => 'Projet Beta',
-            'description' => 'Refonte complète du système d\'authentification et gestion des permissions utilisateurs.',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '3',
-            'name' => 'Migration Cloud',
-            'description' => 'Migration de l\'infrastructure vers une solution cloud pour améliorer la scalabilité et les performances.',
-            'status' => 'en-pause'
-        ],
-        [
-            'id' => '4',
-            'name' => 'Application Mobile',
-            'description' => 'Création d\'une application mobile native pour iOS et Android permettant la gestion des tickets en mobilité.',
-            'status' => 'termine'
-        ]
-    ];
-}
-
-// Initialiser les tickets si non présents
-if (!isset($_SESSION['tickets'])) {
-    $_SESSION['tickets'] = [
-        [
-            'id' => '1',
-            'title' => 'Bug d\'affichage sur mobile',
-            'description' => 'L\'interface ne s\'affiche pas correctement sur les appareils mobiles de moins de 375px de largeur.',
-            'status' => 'ouvert',
-            'priority' => 'high',
-            'project' => '1',
-            'billable' => true,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '2',
-            'title' => 'Amélioration du dashboard',
-            'description' => 'Ajouter des graphiques interactifs pour visualiser les statistiques des tickets et projets.',
-            'status' => 'en-cours',
-            'priority' => 'medium',
-            'project' => '1',
-            'billable' => false,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '3',
-            'title' => 'Correction du formulaire de connexion',
-            'description' => 'Le formulaire de connexion ne validait pas correctement les emails. Problème résolu.',
-            'status' => 'ferme',
-            'priority' => 'high',
-            'project' => '2',
-            'billable' => true,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '4',
-            'title' => 'Notification par email',
-            'description' => 'Implémenter un système de notification par email lors de la création ou mise à jour d\'un ticket.',
-            'status' => 'ouvert',
-            'priority' => 'low',
-            'project' => '1',
-            'billable' => false,
-            'createdAt' => time()
-        ]
-    ];
-}
-
-// Gestion du mode admin
-$adminPassword = 'admin123';
-$isAdminMode = isset($_SESSION['admin']) && $_SESSION['admin'] === true;
-
-// Traiter la soumission du mot de passe admin
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_password'])) {
-    if ($_POST['admin_password'] === $adminPassword) {
-        $_SESSION['admin'] = true;
-        $isAdminMode = true;
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit;
-    } else {
-        $adminError = 'Mot de passe incorrect';
-    }
-}
-
-// Toggle admin mode (désactivation)
-if (isset($_GET['toggle_admin']) && $isAdminMode) {
-    $_SESSION['admin'] = false;
-    $isAdminMode = false;
-    header('Location: ' . $_SERVER['PHP_SELF']);
+if (!isset($_SESSION['user_id'])) {
+    header('Location: index.php');
     exit;
 }
 
-// Traiter la soumission du formulaire de ticket
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['title'])) {
-    $title = htmlspecialchars($_POST['title']);
-    $description = htmlspecialchars($_POST['description']);
-    $project = $_POST['project'];
-    $priority = $_POST['priority'];
-    $billable = isset($_POST['billable']) ? true : false;
+require_once 'db.php';
 
-    if (!empty($title) && !empty($description) && !empty($project) && !empty($priority)) {
-        $newTicket = [
-            'id' => uniqid(),
-            'title' => $title,
-            'description' => $description,
-            'status' => 'ouvert',
-            'priority' => $priority,
-            'project' => $project,
-            'billable' => $billable,
-            'createdAt' => time()
-        ];
-        array_unshift($_SESSION['tickets'], $newTicket);
-        // Redirection pour éviter re-soumission
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit;
-    }
+$pdo  = getDB();
+$uid  = $_SESSION['user_id'];
+$role = $_SESSION['user_role'];
+
+// Récupère les projets accessibles selon le rôle
+if ($role === 'admin') {
+    $projets = $pdo->query('SELECT id, nom FROM projets ORDER BY nom')->fetchAll();
+} elseif ($role === 'collaborateur') {
+    $stmt = $pdo->prepare('SELECT p.id, p.nom FROM projets p JOIN projet_collaborateurs pc ON p.id = pc.projet_id WHERE pc.user_id = :uid ORDER BY p.nom');
+    $stmt->execute([':uid' => $uid]);
+    $projets = $stmt->fetchAll();
+} else {
+    // client
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE id = :uid');
+    $stmt->execute([':uid' => $uid]);
+    $client_id = $pdo->prepare('SELECT client_id FROM users WHERE id = :uid');
+    $client_id->execute([':uid' => $uid]);
+    $cid = $client_id->fetchColumn();
+    $stmt = $pdo->prepare('SELECT id, nom FROM projets WHERE client_id = :cid ORDER BY nom');
+    $stmt->execute([':cid' => $cid]);
+    $projets = $stmt->fetchAll();
 }
 
-// Fonction pour obtenir le nom du projet
-function getProjectName($projectId) {
-    if (!isset($_SESSION['projects'])) {
-        return 'Projet inconnu';
-    }
-    foreach ($_SESSION['projects'] as $project) {
-        if ($project['id'] == $projectId) {
-            return $project['name'];
-        }
-    }
-    return 'Projet inconnu';
-}
+// Création d'un ticket
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['titre'])) {
+    $titre       = trim($_POST['titre']);
+    $description = trim($_POST['description']);
+    $projet_id   = (int)$_POST['projet_id'];
+    $type        = ($role === 'admin' && isset($_POST['type'])) ? $_POST['type'] : 'inclus';
+    $assigne_a   = !empty($_POST['assigne_a']) ? (int)$_POST['assigne_a'] : null;
 
-// Fonction pour supprimer un ticket
-if (isset($_GET['delete']) && !empty($_GET['delete'])) {
-    $id = $_GET['delete'];
-    $_SESSION['tickets'] = array_filter($_SESSION['tickets'], function($ticket) use ($id) {
-        return $ticket['id'] !== $id;
-    });
-    header('Location: ' . $_SERVER['PHP_SELF']);
+    if (!empty($titre) && !empty($description) && $projet_id > 0) {
+        $stmt = $pdo->prepare('
+            INSERT INTO tickets (projet_id, created_by, assigne_a, titre, description, type, statut)
+            VALUES (:projet_id, :created_by, :assigne_a, :titre, :description, :type, "ouvert")
+        ');
+        $stmt->execute([
+            ':projet_id'   => $projet_id,
+            ':created_by'  => $uid,
+            ':assigne_a'   => $assigne_a,
+            ':titre'       => $titre,
+            ':description' => $description,
+            ':type'        => $type,
+        ]);
+    }
+    header('Location: tickets.php');
     exit;
 }
 
-// Récupérer les paramètres de filtrage
-$search = $_GET['search'] ?? '';
-$status_filter = $_GET['status'] ?? '';
-$priority_filter = $_GET['priority'] ?? '';
-$project_filter = $_GET['project'] ?? '';
-$billable_filter = $_GET['billable'] ?? '';
+// Suppression d'un ticket (admin seulement)
+if (isset($_GET['delete']) && $role === 'admin') {
+    $stmt = $pdo->prepare('DELETE FROM tickets WHERE id = :id');
+    $stmt->execute([':id' => (int)$_GET['delete']]);
+    header('Location: tickets.php');
+    exit;
+}
 
-// Filtrer les tickets
-$filtered_tickets = array_filter($_SESSION['tickets'], function($ticket) use ($search, $status_filter, $priority_filter, $project_filter, $billable_filter) {
-    if ($search && !stripos($ticket['title'], $search) && !stripos($ticket['description'], $search)) {
-        return false;
-    }
-    if ($status_filter && $ticket['status'] !== $status_filter) {
-        return false;
-    }
-    if ($priority_filter && $ticket['priority'] !== $priority_filter) {
-        return false;
-    }
-    if ($project_filter && $ticket['project'] !== $project_filter) {
-        return false;
-    }
-    if ($billable_filter !== '' && ($ticket['billable'] ? '1' : '0') !== $billable_filter) {
-        return false;
-    }
-    return true;
-});
+// Filtres
+$search           = trim($_GET['search'] ?? '');
+$status_filter    = $_GET['status'] ?? '';
+$projet_filter    = $_GET['projet_id'] ?? '';
+$type_filter      = $_GET['type'] ?? '';
+
+// Requête tickets selon le rôle
+$where   = [];
+$params  = [];
+
+if ($role === 'collaborateur') {
+    $where[]            = 't.projet_id IN (SELECT projet_id FROM projet_collaborateurs WHERE user_id = :uid)';
+    $params[':uid']     = $uid;
+} elseif ($role === 'client') {
+    $where[]            = 'p.client_id = :cid';
+    $params[':cid']     = $cid;
+}
+
+if ($search) {
+    $where[]              = '(t.titre LIKE :search OR t.description LIKE :search)';
+    $params[':search']    = '%' . $search . '%';
+}
+if ($status_filter) {
+    $where[]              = 't.statut = :statut';
+    $params[':statut']    = $status_filter;
+}
+if ($projet_filter) {
+    $where[]              = 't.projet_id = :pid';
+    $params[':pid']       = (int)$projet_filter;
+}
+if ($type_filter && $role === 'admin') {
+    $where[]              = 't.type = :type';
+    $params[':type']      = $type_filter;
+}
+
+$sql = '
+    SELECT t.*, p.nom AS projet_nom, u.prenom, u.nom AS user_nom
+    FROM tickets t
+    JOIN projets p ON t.projet_id = p.id
+    JOIN users u ON t.created_by = u.id
+' . (!empty($where) ? 'WHERE ' . implode(' AND ', $where) : '') . '
+    ORDER BY t.created_at DESC
+';
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$tickets = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -196,116 +132,82 @@ $filtered_tickets = array_filter($_SESSION['tickets'], function($ticket) use ($s
                 <span></span>
             </div>
             <ul id="nav-menu">
-                <li><a href="tickets.php">Tickets</a></li>
                 <li><a href="dashboard.php">Tableau de bord</a></li>
                 <li><a href="projects.php">Projets</a></li>
-                <li><a href="search.php">Rechercher</a></li>
+                <li><a href="tickets.php">Tickets</a></li>
+                <li><a href="profile.php">Profil</a></li>
+                <li><a href="logout.php">Déconnexion</a></li>
             </ul>
         </nav>
     </header>
-
-    <!-- Bouton mode admin -->
-    <div class="admin-toggle">
-        <?php if ($isAdminMode): ?>
-            <a href="?toggle_admin=1" class="admin-btn admin-active">🔓 Mode Admin</a>
-        <?php else: ?>
-            <a href="?admin=1" class="admin-btn">🔒 Mode Admin</a>
-        <?php endif; ?>
-    </div>
-
-    <!-- Modal mot de passe admin -->
-    <?php if (isset($_GET['admin']) && !$isAdminMode): ?>
-    <div class="admin-modal show">
-        <div class="admin-modal-content">
-            <h3>Authentifiez vous</h3>
-            <?php if (isset($adminError)): ?>
-                <div class="error-message"><?php echo $adminError; ?></div>
-            <?php endif; ?>
-            <form method="post" action="">
-                <input type="password" name="admin_password" id="admin_password" placeholder="Mot de passe" required autofocus>
-                <div class="modal-buttons">
-                    <a href="<?php echo $_SERVER['PHP_SELF']; ?>" class="btn-cancel" style="text-align: center; padding: 0.8rem; text-decoration: none; display: block;">Annuler</a>
-                    <button type="submit">Valider</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <?php endif; ?>
     <main>
         <div class="tickets-container">
-            <!-- Liste des tickets à gauche -->
+            <!-- Liste des tickets -->
             <section class="tickets-list">
                 <h2>Liste des tickets</h2>
-                <!-- Contrôles de recherche et filtres -->
-                <button class="filters-toggle" onclick="toggleFilters()">
-                    Filtres & Recherche
-                </button>
+
+                <button class="filters-toggle" onclick="toggleFilters()">Filtres & Recherche</button>
 
                 <div class="controls-bar collapsed" id="filtersPanel">
                     <form method="get" action="">
                         <div class="search-box">
-                            <input type="text" name="search" placeholder="Rechercher dans les tickets..." value="<?php echo htmlspecialchars($search); ?>">
+                            <input type="text" name="search" placeholder="Rechercher..." value="<?= htmlspecialchars($search) ?>">
                         </div>
                         <div class="filters-row">
                             <select name="status">
                                 <option value="">Tous les statuts</option>
-                                <option value="ouvert" <?php if ($status_filter == 'ouvert') echo 'selected'; ?>>Ouvert</option>
-                                <option value="en-cours" <?php if ($status_filter == 'en-cours') echo 'selected'; ?>>En cours</option>
-                                <option value="ferme" <?php if ($status_filter == 'ferme') echo 'selected'; ?>>Fermé</option>
-                            </select>
-                            <select name="priority">
-                                <option value="">Toutes priorités</option>
-                                <option value="low" <?php if ($priority_filter == 'low') echo 'selected'; ?>>Faible</option>
-                                <option value="medium" <?php if ($priority_filter == 'medium') echo 'selected'; ?>>Moyenne</option>
-                                <option value="high" <?php if ($priority_filter == 'high') echo 'selected'; ?>>Haute</option>
-                            </select>
-                            <select name="project">
-                                <option value="">Tous projets</option>
-                                <?php foreach ($_SESSION['projects'] as $proj): ?>
-                                    <option value="<?php echo $proj['id']; ?>" <?php if ($project_filter == $proj['id']) echo 'selected'; ?>><?php echo htmlspecialchars($proj['name']); ?></option>
+                                <?php foreach (['ouvert','en_cours','en_attente_validation','validé','refusé','fermé'] as $s): ?>
+                                    <option value="<?= $s ?>" <?= $status_filter === $s ? 'selected' : '' ?>><?= ucfirst(str_replace('_', ' ', $s)) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <?php if ($isAdminMode): ?>
-                            <select name="billable">
-                                <option value="">Facturable ?</option>
-                                <option value="1" <?php if ($billable_filter == '1') echo 'selected'; ?>>Oui</option>
-                                <option value="0" <?php if ($billable_filter == '0') echo 'selected'; ?>>Non</option>
+                            <select name="projet_id">
+                                <option value="">Tous les projets</option>
+                                <?php foreach ($projets as $p): ?>
+                                    <option value="<?= $p['id'] ?>" <?= $projet_filter == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['nom']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if ($role === 'admin'): ?>
+                            <select name="type">
+                                <option value="">Tous types</option>
+                                <option value="inclus" <?= $type_filter === 'inclus' ? 'selected' : '' ?>>Inclus</option>
+                                <option value="facturable" <?= $type_filter === 'facturable' ? 'selected' : '' ?>>Facturable</option>
                             </select>
                             <?php endif; ?>
                         </div>
                         <div class="sort-buttons">
                             <button type="submit" class="sort-btn">Filtrer</button>
-                            <a href="tickets.php" class="sort-btn" id="reset-filters">Réinitialiser</a>
+                            <a href="tickets.php" class="sort-btn">Réinitialiser</a>
                         </div>
                     </form>
                 </div>
-                <!-- Liste des tickets -->
+
                 <div id="tickets-list">
-                    <?php if (empty($filtered_tickets)): ?>
+                    <?php if (empty($tickets)): ?>
                         <div class="no-results">
-                            <p>Aucun ticket trouvé avec ces critères.</p>
-                            <button onclick="window.location.href='tickets.php'">Réinitialiser les filtres</button>
+                            <p>Aucun ticket trouvé.</p>
                         </div>
                     <?php else: ?>
-                        <?php foreach ($filtered_tickets as $ticket): ?>
-                        <div class="ticket-item" data-status="<?php echo $ticket['status']; ?>" data-priority="<?php echo $ticket['priority']; ?>" data-project="<?php echo $ticket['project']; ?>" data-billable="<?php echo $ticket['billable'] ? 'true' : 'false'; ?>">
+                        <?php foreach ($tickets as $ticket): ?>
+                        <div class="ticket-item">
                             <div class="ticket-header">
-                                <h3 class="ticket-title"><?php echo htmlspecialchars($ticket['title']); ?></h3>
+                                <h3 class="ticket-title"><?= htmlspecialchars($ticket['titre']) ?></h3>
                                 <div>
-                                    <span class="badge <?php echo $ticket['status']; ?>"><?php echo ucfirst(str_replace('-', ' ', $ticket['status'])); ?></span>
-                                    <?php if ($ticket['billable'] && $isAdminMode): ?>
-                                    <span class="billable-badge badge" style="background-color: #fff9c4; color: #f57f17;">Facturable</span>
+                                    <span class="badge <?= $ticket['statut'] ?>"><?= ucfirst(str_replace('_', ' ', $ticket['statut'])) ?></span>
+                                    <?php if ($role === 'admin' && $ticket['type'] === 'facturable'): ?>
+                                        <span class="billable-badge badge" style="background-color:#fff9c4;color:#f57f17;">Facturable</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <p class="ticket-description"><?php echo htmlspecialchars($ticket['description']); ?></p>
+                            <p class="ticket-description"><?= htmlspecialchars($ticket['description']) ?></p>
                             <div class="ticket-meta">
-                                <span class="priority-badge priority-<?php echo $ticket['priority']; ?>"><?php echo $ticket['priority'] === 'high' ? 'Haute' : ($ticket['priority'] === 'medium' ? 'Moyenne' : 'Faible'); ?></span>
-                                <a href="project_detail.php?id=<?php echo $ticket['project']; ?>" class="project-name"><?php echo getProjectName($ticket['project']); ?></a>
+                                <span class="project-name"><?= htmlspecialchars($ticket['projet_nom']) ?></span>
+                                <span>Par <?= htmlspecialchars($ticket['prenom'] . ' ' . $ticket['user_nom']) ?></span>
                             </div>
                             <div class="ticket-actions">
-                                <a href="ticket_detail.php?id=<?php echo $ticket['id']; ?>" class="btn-details">Voir détails</a>
-                                <a href="?delete=<?php echo $ticket['id']; ?>" class="btn-delete" onclick="return confirm('Voulez-vous vraiment supprimer ce ticket ?')">Supprimer</a>
+                                <a href="ticket_detail.php?id=<?= $ticket['id'] ?>" class="btn-details">Voir détails</a>
+                                <?php if ($role === 'admin'): ?>
+                                    <a href="?delete=<?= $ticket['id'] ?>" class="btn-delete" onclick="return confirm('Supprimer ce ticket ?')">Supprimer</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -313,33 +215,27 @@ $filtered_tickets = array_filter($_SESSION['tickets'], function($ticket) use ($s
                 </div>
             </section>
 
-            <!-- Formulaire à droite -->
+            <!-- Formulaire création -->
             <section class="ticket-form">
                 <h2>Créer un ticket</h2>
                 <form method="post" action="">
-                    <input type="text" name="title" placeholder="Titre du ticket" required>
+                    <input type="text" name="titre" placeholder="Titre du ticket" required>
                     <textarea name="description" placeholder="Description" rows="4" required></textarea>
-                    <select name="project" required>
+                    <select name="projet_id" id="select-projet" required>
                         <option value="">Sélectionner un projet</option>
-                        <?php foreach ($_SESSION['projects'] as $project): ?>
-                            <option value="<?php echo $project['id']; ?>"><?php echo htmlspecialchars($project['name']); ?></option>
+                        <?php foreach ($projets as $p): ?>
+                            <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nom']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <select name="priority" required>
-                        <option value="">Priorité</option>
-                        <option value="low">Faible</option>
-                        <option value="medium">Moyenne</option>
-                        <option value="high">Haute</option>
+                    <select name="assigne_a" id="select-collab" disabled>
+                        <option value="">— Assigner à un collaborateur (optionnel) —</option>
                     </select>
-                    
-                    <!-- Champ facturable (visible uniquement en mode admin) -->
-                    <?php if ($isAdminMode): ?>
-                    <div class="checkbox-field">
-                        <input type="checkbox" name="billable" id="billable-checkbox">
-                        <label for="billable-checkbox">Ticket facturable</label>
-                    </div>
+                    <?php if ($role === 'admin'): ?>
+                    <select name="type">
+                        <option value="inclus">Inclus</option>
+                        <option value="facturable">Facturable</option>
+                    </select>
                     <?php endif; ?>
-
                     <button type="submit">Créer le ticket</button>
                 </form>
             </section>
@@ -349,11 +245,36 @@ $filtered_tickets = array_filter($_SESSION['tickets'], function($ticket) use ($s
         <p>&copy; 2026 Site de Ticketing. Tous droits réservés.</p>
     </footer>
     <script>
-        function toggleFilters() {
-            const panel = document.getElementById("filtersPanel");
-            panel.classList.toggle("collapsed");
-        }
-    </script>
+        function toggleMenu() { document.getElementById('nav-menu').classList.toggle('show'); }
+        function toggleFilters() { document.getElementById('filtersPanel').classList.toggle('collapsed'); }
 
+        document.getElementById('select-projet').addEventListener('change', function () {
+            const projetId = this.value;
+            const selectCollab = document.getElementById('select-collab');
+
+            selectCollab.innerHTML = '<option value="">— Assigner à un collaborateur (optionnel) —</option>';
+
+            if (!projetId) {
+                selectCollab.disabled = true;
+                return;
+            }
+
+            fetch('get_collaborateurs.php?projet_id=' + projetId)
+                .then(r => r.json())
+                .then(collabs => {
+                    if (collabs.length === 0) {
+                        selectCollab.disabled = true;
+                        return;
+                    }
+                    collabs.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = c.prenom + ' ' + c.nom + ' (' + c.email + ')';
+                        selectCollab.appendChild(opt);
+                    });
+                    selectCollab.disabled = false;
+                });
+        });
+    </script>
 </body>
 </html>

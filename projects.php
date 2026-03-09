@@ -1,66 +1,79 @@
 <?php
-// projects.php - Gestion des projets avec formulaires fonctionnels
+// projects.php
 session_start();
-// En cas de reset manuel, décommenter cette ligne:
-// unset($_SESSION['projects']);
-// Initialiser les projets si non présents
-if (!isset($_SESSION['projects'])) {
-    $_SESSION['projects'] = [
-        [
-            'id' => '1',
-            'name' => 'Projet Alpha',
-            'description' => 'Développement d\'une nouvelle plateforme de gestion de tickets avec interface moderne et fonctionnalités avancées.',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '2',
-            'name' => 'Projet Beta',
-            'description' => 'Refonte complète du système d\'authentification et gestion des permissions utilisateurs.',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '3',
-            'name' => 'Migration Cloud',
-            'description' => 'Migration de l\'infrastructure vers une solution cloud pour améliorer la scalabilité et les performances.',
-            'status' => 'en-pause'
-        ],
-        [
-            'id' => '4',
-            'name' => 'Application Mobile',
-            'description' => 'Création d\'une application mobile native pour iOS et Android permettant la gestion des tickets en mobilité.',
-            'status' => 'termine'
-        ]
-    ];
-}
 
-// Traiter la soumission du formulaire
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'])) {
-    $name = htmlspecialchars($_POST['name']);
-    $description = htmlspecialchars($_POST['description']);
-    $status = $_POST['status'];
-
-    if (!empty($name) && !empty($description) && !empty($status)) {
-        $newProject = [
-            'id' => uniqid(),
-            'name' => $name,
-            'description' => $description,
-            'status' => $status
-        ];
-        array_unshift($_SESSION['projects'], $newProject);
-        // Redirection pour éviter re-soumission
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit;
-    }
-}
-
-// Fonction pour supprimer un projet
-if (isset($_GET['delete']) && !empty($_GET['delete'])) {
-    $id = $_GET['delete'];
-    $_SESSION['projects'] = array_filter($_SESSION['projects'], function($project) use ($id) {
-        return $project['id'] !== $id;
-    });
-    header('Location: ' . $_SERVER['PHP_SELF']);
+if (!isset($_SESSION['user_id'])) {
+    header('Location: index.php');
     exit;
+}
+
+require_once 'db.php';
+
+$pdo  = getDB();
+$uid  = $_SESSION['user_id'];
+$role = $_SESSION['user_role'];
+
+// Récupère le client_id si besoin
+$cid = null;
+if ($role === 'client') {
+    $stmt = $pdo->prepare('SELECT client_id FROM users WHERE id = :uid');
+    $stmt->execute([':uid' => $uid]);
+    $cid = $stmt->fetchColumn();
+}
+
+// Création d'un projet (admin seulement)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $role === 'admin' && isset($_POST['nom'])) {
+    $nom        = trim($_POST['nom']);
+    $description = trim($_POST['description']);
+    $statut     = $_POST['statut'];
+    $client_id  = (int)$_POST['client_id'];
+
+    if (!empty($nom) && !empty($statut) && $client_id > 0) {
+        $stmt = $pdo->prepare('INSERT INTO projets (client_id, nom, description, statut) VALUES (:cid, :nom, :desc, :statut)');
+        $stmt->execute([':cid' => $client_id, ':nom' => $nom, ':desc' => $description, ':statut' => $statut]);
+        $new_projet_id = $pdo->lastInsertId();
+
+        // Lie les collaborateurs sélectionnés (optionnel)
+        $collab_ids = $_POST['collaborateurs'] ?? [];
+        foreach ($collab_ids as $collab_id) {
+            $collab_id = (int)$collab_id;
+            if ($collab_id > 0) {
+                $stmt2 = $pdo->prepare('INSERT IGNORE INTO projet_collaborateurs (projet_id, user_id) VALUES (:pid, :uid)');
+                $stmt2->execute([':pid' => $new_projet_id, ':uid' => $collab_id]);
+            }
+        }
+    }
+    header('Location: projects.php');
+    exit;
+}
+
+// Suppression (admin seulement)
+if (isset($_GET['delete']) && $role === 'admin') {
+    $stmt = $pdo->prepare('DELETE FROM projets WHERE id = :id');
+    $stmt->execute([':id' => (int)$_GET['delete']]);
+    header('Location: projects.php');
+    exit;
+}
+
+// Récupère les projets selon le rôle
+if ($role === 'admin') {
+    $projets = $pdo->query('SELECT p.*, c.nom AS client_nom FROM projets p JOIN clients c ON p.client_id = c.id ORDER BY p.created_at DESC')->fetchAll();
+} elseif ($role === 'collaborateur') {
+    $stmt = $pdo->prepare('SELECT p.*, c.nom AS client_nom FROM projets p JOIN clients c ON p.client_id = c.id JOIN projet_collaborateurs pc ON p.id = pc.projet_id WHERE pc.user_id = :uid ORDER BY p.created_at DESC');
+    $stmt->execute([':uid' => $uid]);
+    $projets = $stmt->fetchAll();
+} else {
+    $stmt = $pdo->prepare('SELECT p.*, c.nom AS client_nom FROM projets p JOIN clients c ON p.client_id = c.id WHERE p.client_id = :cid ORDER BY p.created_at DESC');
+    $stmt->execute([':cid' => $cid]);
+    $projets = $stmt->fetchAll();
+}
+
+// Liste des clients pour le formulaire admin
+$clients = [];
+$collaborateurs = [];
+if ($role === 'admin') {
+    $clients = $pdo->query('SELECT id, nom FROM clients ORDER BY nom')->fetchAll();
+    $collaborateurs = $pdo->query("SELECT id, prenom, nom, email FROM users WHERE role = 'collaborateur' ORDER BY nom")->fetchAll();
 }
 ?>
 <!DOCTYPE html>
@@ -81,55 +94,79 @@ if (isset($_GET['delete']) && !empty($_GET['delete'])) {
                 <span></span>
             </div>
             <ul id="nav-menu">
-                <li><a href="projects.php">Projets</a></li>
                 <li><a href="dashboard.php">Tableau de bord</a></li>
+                <li><a href="projects.php">Projets</a></li>
                 <li><a href="tickets.php">Tickets</a></li>
+                <li><a href="profile.php">Profil</a></li>
+                <li><a href="logout.php">Déconnexion</a></li>
             </ul>
         </nav>
     </header>
     <main>
         <div class="projects-container">
-            <!-- Liste des projets à gauche -->
             <section class="projects-list">
                 <h2>Liste des projets</h2>
-                
-                <div id="projects-list">
-                    <?php foreach ($_SESSION['projects'] as $project): ?>
-                    <div class="project-item" data-status="<?php echo $project['status']; ?>">
-                        <div class="project-header">
-                            <h3 class="project-title"><?php echo htmlspecialchars($project['name']); ?></h3>
-                            <span class="badge <?php echo $project['status']; ?>"><?php echo ucfirst(str_replace('-', ' ', $project['status'])); ?></span>
-                        </div>
-                        <p class="project-description"><?php echo htmlspecialchars($project['description']); ?></p>
-                        <div class="project-actions">
-                            <a href="project_detail.php?id=<?php echo $project['id']; ?>" class="btn-details">Voir détails</a>
-                            <a href="?delete=<?php echo $project['id']; ?>" class="btn-delete" onclick="return confirm('Voulez-vous vraiment supprimer ce projet ?')">Supprimer</a>
-                        </div>
+                <?php if (empty($projets)): ?>
+                    <p>Aucun projet disponible.</p>
+                <?php else: ?>
+                <?php foreach ($projets as $projet): ?>
+                <div class="project-item" data-status="<?= $projet['statut'] ?>">
+                    <div class="project-header">
+                        <h3 class="project-title"><?= htmlspecialchars($projet['nom']) ?></h3>
+                        <span class="badge <?= $projet['statut'] ?>"><?= ucfirst(str_replace('-', ' ', $projet['statut'])) ?></span>
                     </div>
-                    <?php endforeach; ?>
+                    <p class="project-description"><?= htmlspecialchars($projet['description']) ?></p>
+                    <p><small>Client : <?= htmlspecialchars($projet['client_nom']) ?></small></p>
+                    <div class="project-actions">
+                        <a href="project_detail.php?id=<?= $projet['id'] ?>" class="btn-details">Voir détails</a>
+                        <?php if ($role === 'admin'): ?>
+                            <a href="?delete=<?= $projet['id'] ?>" class="btn-delete" onclick="return confirm('Supprimer ce projet ?')">Supprimer</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
             </section>
 
-            <!-- Formulaire à droite -->
+            <!-- Formulaire visible pour tous mais création réservée à admin -->
             <section class="project-form">
                 <h2>Créer un projet</h2>
+                <?php if ($role === 'admin'): ?>
                 <form method="post" action="">
-                    <input type="text" name="name" placeholder="Nom du projet" required>
-                    <textarea name="description" placeholder="Description" rows="4" required></textarea>
-                    <select name="status" required>
+                    <input type="text" name="nom" placeholder="Nom du projet" required>
+                    <textarea name="description" placeholder="Description" rows="4"></textarea>
+                    <select name="client_id" required>
+                        <option value="">Sélectionner un client</option>
+                        <?php foreach ($clients as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nom']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="statut" required>
                         <option value="">Statut</option>
                         <option value="actif">Actif</option>
-                        <option value="en-pause">En pause</option>
-                        <option value="termine">Terminé</option>
+                        <option value="archivé">Archivé</option>
+                        <option value="terminé">Terminé</option>
                     </select>
+                    <label>Collaborateurs (optionnel)</label>
+                    <select name="collaborateurs[]" multiple size="4">
+                        <?php foreach ($collaborateurs as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['prenom'] . ' ' . $c['nom'] . ' — ' . $c['email']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>Maintiens Ctrl (ou Cmd) pour sélectionner plusieurs collaborateurs.</small>
                     <button type="submit">Créer le projet</button>
                 </form>
+                <?php else: ?>
+                    <p>Seul un administrateur peut créer des projets.</p>
+                <?php endif; ?>
             </section>
         </div>
     </main>
     <footer>
         <p>&copy; 2026 Site de Ticketing. Tous droits réservés.</p>
     </footer>
-    <script src="script.js"></script>
+    <script>
+        function toggleMenu() { document.getElementById('nav-menu').classList.toggle('show'); }
+    </script>
 </body>
 </html>
