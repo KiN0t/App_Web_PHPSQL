@@ -1,0 +1,838 @@
+/* Reset basique pour cohérence, ça détruit les styles des navigateurs */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Variables pour les couleurs */
+:root {
+    --bg-color: #F8F9FA;
+    --accent-color: #6B46C1;
+    --text-color: #333;
+    --border-color: #E0E0E0;
+    --hover-color: #5A3A9A;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Corps général */
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-size: 16px;
+}
+
+/* Header */
+header {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+nav a:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-2px);
+}
+
+/* Menu hamburger pour mobile */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.menu-toggle span {
+    width: 28px;
+    height: 3px;
+    background-color: white;
+    border-radius: 2px;
+    transition: transform 0.3s ease, opacity 0.2s ease;
+}
+
+/*Menu responsive */
+@media (max-width: 767px) {
+    header {
+        padding: 1rem;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    nav ul {
+        flex-direction: column;
+        width: 100%;
+        margin-top: 1rem;
+        gap: 1rem;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.4s ease, opacity 0.3s ease;
+    }
+
+    nav ul.show {
+        max-height: 300px;
+        opacity: 1;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    nav a {
+        padding: 0.75rem;
+        text-align: center;
+    }
+}
+
+/* Main : Centré et propre */
+main {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centrage horizontal */
+}
+
+section {
+    margin-bottom: 2rem;
+    width: 100%;
+    max-width: 800px; /* Limite pour propreté */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centrage interne */
+    text-align: center; /* Texte centré */
+}
+
+h2 {
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+/* Formulaires : Centrés et propres */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    max-width: 500px;
+    width: 100%;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+input, textarea, select, button {
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px rgba(107, 70, 193, 0.3);
+    outline: none;
+}
+
+button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+button:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-2px);
+}
+
+/* Listes (projets, tickets) : Centrées et propres */
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.item {
+    background-color: white;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.item h3 {
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+}
+
+/* Détails : Centrés */
+.detail {
+    background-color: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 800px;
+}
+
+/* Footer */
+footer {
+    background-color: var(--accent-color);
+    color: white;
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: auto;
+    box-shadow: var(--shadow);
+}
+
+/* ============================================================================ */
+/* STYLES POUR TICKETS ET PROJETS */
+/* ============================================================================ */
+
+/* Conteneurs principaux */
+.tickets-container,
+.projects-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.tickets-list,
+.projects-list {
+    padding-right: 1rem;
+}
+
+.ticket-form,
+.project-form {
+    padding-left: 1rem;
+    border-left: 2px solid #e0e0e0;
+}
+
+/* CONTRÔLES DE TRI ET FILTRES */
+/* ================================================= */
+/* FILTRES REPLIABLES */
+/* ================================================= */
+
+.filters-toggle {
+    width: 100%;
+    max-width: 800px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+.filters-toggle:hover {
+    background: var(--hover-color);
+    transform: translateY(-2px);
+}
+
+/* Panel filtres */
+.controls-bar {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+/* Etat replié */
+.controls-bar.collapsed {
+    max-height: 0;
+    padding: 0 1rem;
+    opacity: 0;
+}
+
+/* Etat ouvert */
+.controls-bar:not(.collapsed) {
+    padding: 1.5rem;
+    max-height: 500px;
+    opacity: 1;
+}
+
+/* On enlève le style vertical hérité */
+.controls-bar form {
+    background: none;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    max-width: 100%;
+    gap: 1rem;
+}
+
+.filters-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.search-box {
+    margin-bottom: 1rem;
+}
+
+.search-box input {
+    width: 100%;
+}
+
+.filters-row select,
+.search-box input {
+    padding: 0.7rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.filters-row select:focus,
+.search-box input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
+    outline: none;
+}
+
+
+.sort-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.sort-btn,
+#reset-filters {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: none;
+}
+
+/* Bouton Filtrer */
+.sort-btn {
+    background: var(--accent-color);
+    color: white;
+}
+
+.sort-btn:hover {
+    background: var(--hover-color);
+    transform: translateY(-2px);
+}
+
+/* Bouton Réinitialiser */
+#reset-filters {
+    background: #f44336;
+    color: white;
+}
+
+#reset-filters:hover {
+    background: #d32f2f;
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filters-row {
+        flex-direction: column;
+    }
+
+    .sort-buttons {
+        flex-direction: column;
+    }
+}
+
+
+/* Bouton reset spécial */
+#reset-filters {
+    background: #f44336;
+    color: white;
+    border-color: #f44336;
+}
+
+#reset-filters:hover {
+    background: #d32f2f;
+    border-color: #d32f2f;
+}
+
+
+#admin-toggle-btn {
+    padding: 0.75rem 1.5rem;
+    background: #757575;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+#admin-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* TICKETS */
+.ticket-item,
+.project-item {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.ticket-item:hover,
+.project-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-header,
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.ticket-title,
+.project-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.badge.ouvert {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge.en-cours {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.badge.ferme {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.badge.actif {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.badge.en-pause {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.badge.termine {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.billable-badge {
+    margin-left: 0.5rem;
+}
+
+.ticket-description,
+.project-description {
+    color: #666;
+    margin: 0.75rem 0;
+    line-height: 1.5;
+}
+
+.ticket-meta {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.priority-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.priority-high {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.priority-medium {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.priority-low {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.project-name {
+    color: #666;
+}
+
+.ticket-actions,
+.project-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-details {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #1976d2;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-details:hover {
+    background-color: #1565c0;
+}
+
+.btn-delete {
+    padding: 0.5rem 1rem;
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-delete:hover {
+    background-color: #c62828;
+}
+
+.no-results {
+    text-align: center;
+    padding: 3rem;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.no-results button {
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#billable-field {
+    display: none;
+}
+
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.checkbox-field input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Responsive général : Ajustements pour petites fenêtres et mobiles */
+@media (max-width: 767px) {
+    body {
+        font-size: 14px; /* Police réduite */
+    }
+    main {
+        padding: 1rem;
+    }
+    section {
+        max-width: 100%;
+    }
+    h2 {
+        font-size: 1.5rem;
+    }
+    form {
+        padding: 1.5rem;
+        gap: 1rem;
+    }
+    .item {
+        padding: 1rem;
+    }
+    .detail {
+        padding: 1.5rem;
+    }
+    footer {
+        padding: 1rem;
+    }
+
+    /* Responsive pour tickets et projets */
+    .tickets-container,
+    .projects-container {
+        grid-template-columns: 1fr;
+    }
+
+    .ticket-form,
+    .project-form {
+        border-left: none;
+        border-top: 2px solid #e0e0e0;
+        padding-left: 0;
+        padding-top: 2rem;
+        margin-top: 2rem;
+    }
+
+    .tickets-list,
+    .projects-list {
+        padding-right: 0;
+    }
+
+    .ticket-header,
+    .project-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .admin-toggle {
+        position: static;
+        margin-bottom: 1rem;
+    }
+}
+
+/* Styles pour le bouton admin */
+.admin-btn {
+    padding: 0.75rem 1.5rem;
+    background: #757575;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.admin-active {
+    background: #4caf50;
+}
+
+.admin-active:hover {
+    background: #45a049;
+}
+
+/* Styles pour le conteneur admin (scroll avec la page) */
+.admin-toggle {
+    margin: 1rem 2rem; /* Ajustez selon votre layout */
+    text-align: left; /* Ou center si préféré */
+}
+
+/* Styles pour le bouton admin */
+.admin-btn {
+    padding: 0.75rem 1.5rem;
+    background: #757575;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.admin-active {
+    background: #4caf50;
+}
+
+.admin-active:hover {
+    background: #45a049;
+}
+
+/* Modal pour le mot de passe admin */
+.admin-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /*Ca obscurcit la page*/
+    backdrop-filter: blur(5px);
+}
+
+.admin-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);     /*L'ombre de la popup*/
+    max-width: 400px;
+    width: 90%;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.admin-modal-content h3 {
+    margin-top: 0;
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+}
+
+.admin-modal-content form {
+    padding: 0;
+    box-shadow: none;
+    border: none;
+}
+
+.admin-modal-content .error-message {
+    color: #d32f2f;
+    background: #ffebee;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-cancel {
+    background: #757575;
+    color: white;
+    border-radius: 6px;
+    flex: 1;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #616161;
+    transform: translateY(-2px);
+}
+
+
+.projects-list {
+    align-items: stretch !important;
+    text-align: center !important;
+}
+
+.project-item {
+    width: 100%;
+    text-align: center;
+}
+
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
