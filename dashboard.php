@@ -1,80 +1,63 @@
 <?php
-// dashboard.php - Dashboard en PHP avec statistiques dynamiques
+// dashboard.php
 session_start();
 
-// Initialiser les données si non présentes (simulation de base de données)
-if (!isset($_SESSION['tickets'])) {
-    $_SESSION['tickets'] = [
-        [
-            'id' => '1',
-            'title' => 'Bug d\'affichage sur mobile',
-            'status' => 'ouvert',
-            'priority' => 'high',
-            'project' => '1',
-            'billable' => true,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '2',
-            'title' => 'Amélioration du dashboard',
-            'status' => 'en-cours',
-            'priority' => 'medium',
-            'project' => '1',
-            'billable' => false,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '3',
-            'title' => 'Correction du formulaire de connexion',
-            'status' => 'ferme',
-            'priority' => 'high',
-            'project' => '2',
-            'billable' => true,
-            'createdAt' => time()
-        ],
-        [
-            'id' => '4',
-            'title' => 'Notification par email',
-            'status' => 'ouvert',
-            'priority' => 'low',
-            'project' => '1',
-            'billable' => false,
-            'createdAt' => time()
-        ]
-    ];
+if (!isset($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit;
 }
 
-if (!isset($_SESSION['projects'])) {
-    $_SESSION['projects'] = [
-        [
-            'id' => '1',
-            'name' => 'Projet Alpha',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '2',
-            'name' => 'Projet Beta',
-            'status' => 'actif'
-        ],
-        [
-            'id' => '3',
-            'name' => 'Migration Cloud',
-            'status' => 'en-pause'
-        ],
-        [
-            'id' => '4',
-            'name' => 'Application Mobile',
-            'status' => 'termine'
-        ]
-    ];
-}
+require_once 'db.php';
 
-// Calculer les statistiques
-$totalTickets = count($_SESSION['tickets']);
-$totalProjects = count($_SESSION['projects']);
-$openTickets = count(array_filter($_SESSION['tickets'], function($ticket) {
-    return $ticket['status'] === 'ouvert';
-}));
+$pdo = getDB();
+
+// Stats depuis la vraie DB
+$stmt = $pdo->prepare('
+    SELECT COUNT(*) FROM tickets t
+    JOIN projets p ON t.projet_id = p.id
+    WHERE p.client_id IN (
+        SELECT client_id FROM users WHERE id = :uid
+    ) OR :role IN ("admin", "collaborateur")
+');
+
+// Total tickets accessibles selon le rôle
+$role = $_SESSION['user_role'];
+$uid  = $_SESSION['user_id'];
+
+if ($role === 'admin') {
+    $totalTickets = $pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
+    $openTickets  = $pdo->query("SELECT COUNT(*) FROM tickets WHERE statut = 'ouvert'")->fetchColumn();
+    $totalProjects = $pdo->query('SELECT COUNT(*) FROM projets')->fetchColumn();
+} elseif ($role === 'collaborateur') {
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets t JOIN projet_collaborateurs pc ON t.projet_id = pc.projet_id WHERE pc.user_id = :uid');
+    $stmt->execute([':uid' => $uid]);
+    $totalTickets = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM tickets t JOIN projet_collaborateurs pc ON t.projet_id = pc.projet_id WHERE pc.user_id = :uid AND t.statut = 'ouvert'");
+    $stmt->execute([':uid' => $uid]);
+    $openTickets = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM projet_collaborateurs WHERE user_id = :uid');
+    $stmt->execute([':uid' => $uid]);
+    $totalProjects = $stmt->fetchColumn();
+} else {
+    // client
+    $stmt = $pdo->prepare('SELECT client_id FROM users WHERE id = :uid');
+    $stmt->execute([':uid' => $uid]);
+    $client_id = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets t JOIN projets p ON t.projet_id = p.id WHERE p.client_id = :cid');
+    $stmt->execute([':cid' => $client_id]);
+    $totalTickets = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM tickets t JOIN projets p ON t.projet_id = p.id WHERE p.client_id = :cid AND t.statut = 'ouvert'");
+    $stmt->execute([':cid' => $client_id]);
+    $openTickets = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM projets WHERE client_id = :cid');
+    $stmt->execute([':cid' => $client_id]);
+    $totalProjects = $stmt->fetchColumn();
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -98,28 +81,28 @@ $openTickets = count(array_filter($_SESSION['tickets'], function($ticket) {
                 <li><a href="tickets.php">Tickets</a></li>
                 <li><a href="profile.php">Profil</a></li>
                 <li><a href="settings.php">Paramètres</a></li>
-                <li><a href="index.php">Déconnexion</a></li>
+                <li><a href="logout.php">Déconnexion</a></li>
             </ul>
         </nav>
     </header>
     <main>
         <section>
             <h2>Tableau de bord</h2>
-            <p>Bienvenue ! Voici un aperçu de vos activités.</p>
+            <p>Bienvenue, <?= htmlspecialchars($_SESSION['user_nom']) ?> ! Voici un aperçu de vos activités.</p>
             <div class="list">
                 <div class="item">
                     <h3>Tickets totaux</h3>
-                    <p><?php echo $totalTickets; ?> tickets au total.</p>
+                    <p><?= $totalTickets ?> tickets au total.</p>
                     <a href="tickets.php">Voir tous</a>
                 </div>
                 <div class="item">
                     <h3>Projets totaux</h3>
-                    <p><?php echo $totalProjects; ?> projets au total.</p>
+                    <p><?= $totalProjects ?> projets au total.</p>
                     <a href="projects.php">Voir tous</a>
                 </div>
                 <div class="item">
                     <h3>Tickets ouverts</h3>
-                    <p><?php echo $openTickets; ?> tickets en cours.</p>
+                    <p><?= $openTickets ?> tickets en cours.</p>
                     <a href="tickets.php">Voir tous</a>
                 </div>
             </div>
