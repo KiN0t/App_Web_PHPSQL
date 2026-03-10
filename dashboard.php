@@ -86,6 +86,12 @@ if ($role === 'admin') {
         </nav>
     </header>
     <main>
+        <?php if ($role === 'admin'): ?>
+        <div class="admin-banner">
+            <span>Administration</span>
+            <a href="promote.php">Promouvoir un utilisateur</a>
+        </div>
+        <?php endif; ?>
         <section>
             <h2>Tableau de bord</h2>
             <p>Bienvenue, <?= htmlspecialchars($_SESSION['user_nom']) ?> ! Voici un aperçu de vos activités.</p>
