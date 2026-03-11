@@ -23,12 +23,12 @@ $stmt = $pdo->prepare('
 // Total tickets accessibles selon le rôle
 $role = $_SESSION['user_role'];
 $uid  = $_SESSION['user_id'];
-
+// Si l'admin est là montre tous les tickets et projets
 if ($role === 'admin') {
     $totalTickets = $pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
     $openTickets  = $pdo->query("SELECT COUNT(*) FROM tickets WHERE statut = 'ouvert'")->fetchColumn();
     $totalProjects = $pdo->query('SELECT COUNT(*) FROM projets')->fetchColumn();
-} elseif ($role === 'collaborateur') {
+} elseif ($role === 'collaborateur') { //Le dev ne voit que ce qui est lié à son projet
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets t JOIN projet_collaborateurs pc ON t.projet_id = pc.projet_id WHERE pc.user_id = :uid');
     $stmt->execute([':uid' => $uid]);
     $totalTickets = $stmt->fetchColumn();
@@ -41,7 +41,7 @@ if ($role === 'admin') {
     $stmt->execute([':uid' => $uid]);
     $totalProjects = $stmt->fetchColumn();
 } else {
-    // client
+    // client pareil que dev
     $stmt = $pdo->prepare('SELECT client_id FROM users WHERE id = :uid');
     $stmt->execute([':uid' => $uid]);
     $client_id = $stmt->fetchColumn();

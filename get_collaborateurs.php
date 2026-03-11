@@ -1,12 +1,12 @@
 <?php
-// get_collaborateurs.php - Endpoint AJAX
+// get_collaborateurs.php - Endpoint AJAX (jlai volé sur internet)
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403);
     exit;
 }
-
+// Permets de chopper les infos pour afficher sur le dashboard et tout que les projets liés aux collaborateurs
 require_once 'db.php';
 
 $projet_id = (int)($_GET['projet_id'] ?? 0);

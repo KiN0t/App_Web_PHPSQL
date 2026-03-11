@@ -1,5 +1,5 @@
 <?php
-// home.php - Page d'accueil en PHP
+// home.php - Page d'accueil en PHP  (sert à rien jcrois?)
 ?>
 <!DOCTYPE html>
 <html lang="fr">

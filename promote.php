@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action  = $_POST['action'] ?? '';
     $user_id = (int)($_POST['user_id'] ?? 0);
 
-    // Client → Collaborateur
+    // Client -> Collaborateur
     if ($action === 'to_collab') {
         $projet_id = (int)($_POST['projet_id'] ?? 0);
 
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-    // N'importe qui → Admin
+    // N'importe qui -> Admin
     } elseif ($action === 'to_admin') {
         if ($user_id <= 0) {
             $error = 'Veuillez sélectionner un utilisateur.';

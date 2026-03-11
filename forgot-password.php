@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
         $stmt->execute([':email' => $email]);
         $user = $stmt->fetch();
-        #Ca fait rien
+        #Ca fait rien c'est pour faire joli
         $success = 'Si cette adresse est associée à un compte, un email vous a été envoyé.';
     }
 }
